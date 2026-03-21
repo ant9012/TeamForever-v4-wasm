@@ -79,6 +79,9 @@ typedef unsigned int uint;
 #elif defined(__linux__)
 #define RETRO_PLATFORM   (RETRO_LINUX)
 #define RETRO_DEVICETYPE (RETRO_STANDARD)
+#elif defined(__EMSCRIPTEN__)
+#define RETRO_PLATFORM   (RETRO_LINUX) // Trick it into using Linux/SDL2 logic
+#define RETRO_DEVICETYPE (RETRO_STANDARD)
 #else
 //#error "No Platform was defined"
 #define RETRO_PLATFORM   (RETRO_WIN)
