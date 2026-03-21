@@ -20,23 +20,40 @@ jobs:
         with:
           version: '3.1.53'
 
-      - name: Verify Config Exists
+      - name: Fix Dependency Paths
+        run: |
+          # 1. Fix TinyXML2
+          XML_SRC=$(dirname $(find dependencies -name "tinyxml2.h" | head -n 1))
+          mkdir -p dependencies/all/tinyxml2
+          cp -r $XML_SRC/* dependencies/all/tinyxml2/ 2>/dev/null || true
+          
+          # 2. Fix TheoraPlay
+          THEORA_SRC=$(dirname $(find dependencies -name "theoraplay.h" | head -n 1))
+          mkdir -p dependencies/all/theoraplay
+          cp -r $THEORA_SRC/* dependencies/all/theoraplay/ 2>/dev/null || true
+
+      - name: Patch Makefile
+        run: |
+          # 1. Stop linker flags from being passed to compiler (Fixes yellow warnings)
+          sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
+          
+          # 2. Patch RetroEngine.hpp Platform Check
+          sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#ifndef RETRO_PLATFORM\n#define RETRO_PLATFORM (RETRO_WIN)\n#endif/' RSDKv4/RetroEngine.hpp
+
+      - name: Verify Config
         run: |
           if [ ! -f Makefile_cfgs/Platforms/Emscripten.cfg ]; then
-            echo "Error: Emscripten.cfg not found in Makefile_cfgs/Platforms/"
+            echo "::error::Emscripten.cfg is missing! Please create it in Makefile_cfgs/Platforms/"
             exit 1
           fi
 
       - name: Build
         run: |
-          # We define PLATFORM=Emscripten so the Makefile loads our new cfg file.
-          # We use emmake to ensure environment variables are set correctly.
           emmake make PLATFORM=Emscripten -j$(nproc)
 
       - name: Prepare Artifacts
         run: |
           mkdir output
-          # The Makefile outputs to bin/Emscripten/
           cp bin/Emscripten/rsdkv4.js output/
           cp bin/Emscripten/rsdkv4.wasm output/
 
