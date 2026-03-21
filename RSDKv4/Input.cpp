@@ -31,15 +31,14 @@ int lastMouseX     = 0;
 int lastMouseY     = 0;
 
 struct InputDevice {
-#if RETRO_USING_SDL2
-    // we need the controller index reported from SDL2's controller added event
+    // FORCE ENABLED FOR WASM
     int index;
     SDL_GameController *devicePtr;
     SDL_Haptic *hapticPtr;
-#endif
-#if RETRO_USING_SDL1
-    SDL_Joystick *devicePtr;
-#endif
+    
+    // Keep this if you want, usually unused in SDL2 builds but harmless
+    // SDL_Joystick *devicePtr; 
+
     int id;
 };
 
