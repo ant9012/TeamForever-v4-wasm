@@ -22,28 +22,50 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          # 1. Download LibTheora (Source)
-          # We download the source so we can compile it directly into the engine
+          # 1. Download LibTheora
           wget https://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.gz
           tar -xf libtheora-1.1.1.tar.gz
           
-          # 2. Place it in dependencies/libtheora
+          # 2. Setup Directories
           mkdir -p dependencies
           mv libtheora-1.1.1 dependencies/libtheora
-
-          # 3. Fix TinyXML2 path (for Mod API)
+          
+          # Fix TinyXML2
           XML_SRC=$(dirname $(find dependencies -name "tinyxml2.h" | head -n 1))
           mkdir -p dependencies/all/tinyxml2
           cp -r $XML_SRC/* dependencies/all/tinyxml2/ 2>/dev/null || true
           
-          # 4. Fix TheoraPlay path (Video Player logic)
+          # Fix TheoraPlay
           THEORA_SRC=$(dirname $(find dependencies -name "theoraplay.h" | head -n 1))
           mkdir -p dependencies/all/theoraplay
           cp -r $THEORA_SRC/* dependencies/all/theoraplay/ 2>/dev/null || true
 
-      - name: Patch Makefile (Linker Fix)
-        # Prevents "linker input unused" warnings
-        run: sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
+      - name: Create Theora Unity Build
+        run: |
+          # We create a single C file that includes all necessary Theora source files.
+          # This is the easiest way to link it without rewriting the Makefile.
+          
+          cat > dependencies/all/theoraplay/theora_integrated.c <<EOF
+          #include "../../../dependencies/libtheora/lib/bitpack.c"
+          #include "../../../dependencies/libtheora/lib/decinfo.c"
+          #include "../../../dependencies/libtheora/lib/decode.c"
+          #include "../../../dependencies/libtheora/lib/fragment.c"
+          #include "../../../dependencies/libtheora/lib/huffdec.c"
+          #include "../../../dependencies/libtheora/lib/idct.c"
+          #include "../../../dependencies/libtheora/lib/info.c"
+          #include "../../../dependencies/libtheora/lib/internal.c"
+          #include "../../../dependencies/libtheora/lib/quant.c"
+          #include "../../../dependencies/libtheora/lib/state.c"
+          EOF
+
+      - name: Patch Makefile
+        run: |
+          # 1. Inject our 'theora_integrated' file into the Makefile's SOURCE list.
+          # We find 'dependencies/all/theoraplay/theoraplay' and append our new file to it.
+          sed -i 's|dependencies/all/theoraplay/theoraplay|dependencies/all/theoraplay/theoraplay dependencies/all/theoraplay/theora_integrated|' Makefile
+          
+          # 2. Fix Linker Warnings
+          sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
 
       - name: Build
         run: emmake make PLATFORM=Emscripten -j$(nproc)
