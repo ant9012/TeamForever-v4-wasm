@@ -2,7 +2,7 @@ name: Build TeamForever Wasm
 
 on:
   push:
-    branches: [ "foreve" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -20,28 +20,41 @@ jobs:
         with:
           version: '3.1.53'
 
-      - name: Compile TeamForever (Manual)
+      - name: Patch and Compile
         run: |
           mkdir dist
           
-          # ---------------------------------------------------------
-          # CONFIGURATION
-          # ---------------------------------------------------------
+          # --- STEP 1: PATCH HEADER ---
+          # Your Makefile allows platform detection, BUT RSDKv4/RetroEngine.hpp 
+          # often hardcodes RETRO_WIN on line 84. We must patch this to force Web (5).
+          sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#define RETRO_PLATFORM   (5)/' RSDKv4/RetroEngine.hpp
           
-          # 1. Define Sources
-          # We search for all .cpp files in the repo, BUT we exclude the 'dependencies' folder.
-          # We exclude dependencies because we will use Emscripten's built-in SDL/Ogg/Vorbis ports.
-          SOURCES=$(find . -type f -name "*.cpp" -not -path "./dependencies/*")
+          # --- STEP 2: DEFINE INCLUDES ---
+          # Based exactly on the "INCLUDES" section of your Makefile
+          INCLUDES="-I. \
+            -I./RSDKv4 \
+            -I./RSDKv4/NativeObjects \
+            -I./dependencies/all/asio/asio/include \
+            -I./dependencies/all/stb-image \
+            -I./dependencies/all/tinyxml2 \
+            -I./dependencies/all/theoraplay"
 
-          # 2. Define Include Paths
-          # Point to the root and the dependencies folder so the code can find headers (like SDL.h)
-          INCLUDES="-I. -I./dependencies/all"
+          # --- STEP 3: DEFINE SOURCES ---
+          # 1. All RSDKv4 engine files
+          SOURCES=$(find RSDKv4 -name "*.cpp")
+          
+          # 2. Dependencies listed in your Makefile's "SOURCES" variable
+          # We add tinyxml2.cpp so the Mod API works
+          SOURCES="$SOURCES dependencies/all/tinyxml2/tinyxml2.cpp"
+          
+          # 3. Theoraplay (Video support) - Find .c or .cpp
+          SOURCES="$SOURCES $(find dependencies/all/theoraplay -name "theoraplay.c*" -o -name "theoraplay.cpp*")"
 
-          # 3. Define Flags for rsdk-library-fork compatibility
-          # -DRETRO_PLATFORM=5: Internal RSDK flag for Web/Emscripten
-          # -DRETRO_USE_MOD_LOADER=1: TeamForever features (from your README)
-          # -s EXPORTED_RUNTIME_METHODS: Allows the JS library to inject Data.rsdk via FS
+          # --- STEP 4: DEFINE FLAGS ---
+          # Based on your Makefile flags + Emscripten requirements
           FLAGS="-O3 \
+            -std=c++17 \
+            -fsigned-char \
             -DRETRO_PLATFORM=5 \
             -DRETRO_SDL_VERSION=2 \
             -DRETRO_USE_MOD_LOADER=1 \
@@ -53,13 +66,11 @@ jobs:
             -s EXPORT_NAME='Module' \
             -s MODULARIZE=0 \
             -s EXPORTED_RUNTIME_METHODS=['FS','callMain','cwrap','ccall'] \
-            -Wno-format" 
+            -Wno-macro-redefined \
+            -Wno-format"
 
-          # ---------------------------------------------------------
-          # COMPILATION
-          # ---------------------------------------------------------
-          
-          echo "Compiling with Emscripten..."
+          # --- STEP 5: COMPILE ---
+          echo "Compiling TeamForever..."
           emcc $SOURCES $INCLUDES $FLAGS -o dist/rsdkv4.js
 
       - name: Upload Artifacts
