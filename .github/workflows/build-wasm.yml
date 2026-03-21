@@ -32,13 +32,20 @@ jobs:
           mkdir -p dependencies/all/theoraplay
           cp -r $THEORA_SRC/* dependencies/all/theoraplay/ 2>/dev/null || true
 
-      - name: Patch Makefile
+      - name: Patch Source Code
         run: |
-          # 1. Stop linker flags from being passed to compiler (Fixes yellow warnings)
-          sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
-          
-          # 2. Patch RetroEngine.hpp Platform Check
+          # 1. Fix SDL Include Path
+          # The code likely uses <SDL.h> or <SDL/SDL.h>. Emscripten strictly needs <SDL2/SDL.h>.
+          # We use sed to replace the include line in RetroEngine.hpp
+          sed -i 's|<SDL.h>|<SDL2/SDL.h>|g' RSDKv4/RetroEngine.hpp
+          sed -i 's|<SDL/SDL.h>|<SDL2/SDL.h>|g' RSDKv4/RetroEngine.hpp
+
+          # 2. Patch Platform ID Override
+          # Force the code to accept our command-line defined Platform ID (4)
           sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#ifndef RETRO_PLATFORM\n#define RETRO_PLATFORM (RETRO_WIN)\n#endif/' RSDKv4/RetroEngine.hpp
+
+          # 3. Patch Makefile to remove broken Linker flag passing
+          sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
 
       - name: Verify Config
         run: |
@@ -49,6 +56,7 @@ jobs:
 
       - name: Build
         run: |
+          # Run make. We use 'emmake' to set up the compiler environment.
           emmake make PLATFORM=Emscripten -j$(nproc)
 
       - name: Prepare Artifacts
