@@ -28,7 +28,7 @@ jobs:
           mkdir -p dependencies
           mv libtheora-1.1.1 dependencies/libtheora
           
-          # 2. Fix Paths
+          # 2. Fix Paths for Makefile
           XML_SRC=$(dirname $(find dependencies -name "tinyxml2.h" | head -n 1))
           mkdir -p dependencies/all/tinyxml2
           cp -r $XML_SRC/* dependencies/all/tinyxml2/ 2>/dev/null || true
@@ -39,18 +39,23 @@ jobs:
 
       - name: Patch Makefile (Inject Theora Sources)
         run: |
-          # Define the list of Theora C files (without extension, as per Makefile logic)
-          THEORA_FILES="dependencies/libtheora/lib/bitpack dependencies/libtheora/lib/decinfo dependencies/libtheora/lib/decode dependencies/libtheora/lib/fragment dependencies/libtheora/lib/huffdec dependencies/libtheora/lib/idct dependencies/libtheora/lib/info dependencies/libtheora/lib/internal dependencies/libtheora/lib/quant dependencies/libtheora/lib/state"
+          # Define the COMPLETE list of Theora C files needed for decoding
+          # Added: decapiwrapper (Critical API), apiwrapper (Just in case)
+          THEORA_FILES="dependencies/libtheora/lib/bitpack dependencies/libtheora/lib/decinfo dependencies/libtheora/lib/decode dependencies/libtheora/lib/fragment dependencies/libtheora/lib/huffdec dependencies/libtheora/lib/idct dependencies/libtheora/lib/info dependencies/libtheora/lib/internal dependencies/libtheora/lib/quant dependencies/libtheora/lib/state dependencies/libtheora/lib/decapiwrapper dependencies/libtheora/lib/apiwrapper"
           
           # Inject them into the SOURCES list in the Makefile
-          # We search for the last known entry 'tinyxml2' and append our files
           sed -i "s|dependencies/all/tinyxml2/tinyxml2|dependencies/all/tinyxml2/tinyxml2 $THEORA_FILES|" Makefile
 
-          # Remove broken Linker flag passing (Fixes warnings)
+          # Remove broken Linker flag passing
           sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
 
       - name: Build
-        run: emmake make PLATFORM=Emscripten -j$(nproc)
+        run: |
+          # Clean previous objects to force recompilation of Theora
+          rm -rf obj/Emscripten
+          
+          # Build
+          emmake make PLATFORM=Emscripten -j$(nproc)
 
       - name: Prepare Artifacts
         run: |
