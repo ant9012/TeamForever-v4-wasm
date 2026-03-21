@@ -36,7 +36,6 @@ int currentMusicTrack = -1;
 SDL_AudioDeviceID audioDevice;
 SDL_AudioStream *ogv_stream;
 #endif
-SDL_AudioSpec audioDeviceFormat;
 
 #define AUDIO_FREQUENCY (44100)
 #define AUDIO_FORMAT    (AUDIO_S16SYS) /**< Signed 16-bit samples */
