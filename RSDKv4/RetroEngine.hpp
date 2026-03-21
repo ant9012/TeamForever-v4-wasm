@@ -495,6 +495,7 @@ public:
     // SDL_GLContext glContext; 
 
     // =============================================================
+#endif
 }; 
 
 extern RetroEngine Engine;
