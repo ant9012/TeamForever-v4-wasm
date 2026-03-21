@@ -1,5 +1,6 @@
 #include "RetroEngine.hpp"
 #include <cmath>
+SDL_AudioSpec audioDeviceFormat;
 
 int globalSFXCount = 0;
 int stageSFXCount  = 0;
