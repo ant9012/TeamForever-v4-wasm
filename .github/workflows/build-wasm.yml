@@ -1,0 +1,69 @@
+name: Build TeamForever Wasm
+
+on:
+  push:
+    branches: [ "foreve" ]
+  workflow_dispatch:
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.53'
+
+      - name: Compile TeamForever (Manual)
+        run: |
+          mkdir dist
+          
+          # ---------------------------------------------------------
+          # CONFIGURATION
+          # ---------------------------------------------------------
+          
+          # 1. Define Sources
+          # We search for all .cpp files in the repo, BUT we exclude the 'dependencies' folder.
+          # We exclude dependencies because we will use Emscripten's built-in SDL/Ogg/Vorbis ports.
+          SOURCES=$(find . -type f -name "*.cpp" -not -path "./dependencies/*")
+
+          # 2. Define Include Paths
+          # Point to the root and the dependencies folder so the code can find headers (like SDL.h)
+          INCLUDES="-I. -I./dependencies/all"
+
+          # 3. Define Flags for rsdk-library-fork compatibility
+          # -DRETRO_PLATFORM=5: Internal RSDK flag for Web/Emscripten
+          # -DRETRO_USE_MOD_LOADER=1: TeamForever features (from your README)
+          # -s EXPORTED_RUNTIME_METHODS: Allows the JS library to inject Data.rsdk via FS
+          FLAGS="-O3 \
+            -DRETRO_PLATFORM=5 \
+            -DRETRO_SDL_VERSION=2 \
+            -DRETRO_USE_MOD_LOADER=1 \
+            -s USE_SDL=2 \
+            -s USE_OGG=1 \
+            -s USE_VORBIS=1 \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -s ASSERTIONS=0 \
+            -s EXPORT_NAME='Module' \
+            -s MODULARIZE=0 \
+            -s EXPORTED_RUNTIME_METHODS=['FS','callMain','cwrap','ccall'] \
+            -Wno-format" 
+
+          # ---------------------------------------------------------
+          # COMPILATION
+          # ---------------------------------------------------------
+          
+          echo "Compiling with Emscripten..."
+          emcc $SOURCES $INCLUDES $FLAGS -o dist/rsdkv4.js
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsdk-wasm-output
+          path: dist/
