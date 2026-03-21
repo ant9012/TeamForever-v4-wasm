@@ -1,4 +1,4 @@
-name: Build TeamForever Wasm
+name: Build TeamForever Wasm (Fixed Platform)
 
 on:
   push:
@@ -24,40 +24,45 @@ jobs:
         run: |
           mkdir dist
           
-          # --- STEP 1: PATCH HEADER ---
-          # Your Makefile allows platform detection, BUT RSDKv4/RetroEngine.hpp 
-          # often hardcodes RETRO_WIN on line 84. We must patch this to force Web (5).
-          sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#define RETRO_PLATFORM   (5)/' RSDKv4/RetroEngine.hpp
+          # --- STEP 1: FIX PLATFORM ID ---
+          # Problem: TeamForever uses ID 5 for Android.
+          # Solution: We patch the code to use ID 12 (Custom Web) to avoid Android includes.
+          sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#define RETRO_PLATFORM   (12)/' RSDKv4/RetroEngine.hpp
           
-          # --- STEP 2: DEFINE INCLUDES ---
-          # Based exactly on the "INCLUDES" section of your Makefile
+          # --- STEP 2: LOCATE DEPENDENCIES ---
+          # We need to find exactly where TinyXML2 and TheoraPlay are.
+          TINYXML_PATH=$(find dependencies -name "tinyxml2.h" -print -quit)
+          TINYXML_DIR=$(dirname "$TINYXML_PATH")
+          
+          # --- STEP 3: DEFINE INCLUDES ---
+          # We add the paths found above + the ones from your Makefile
           INCLUDES="-I. \
             -I./RSDKv4 \
             -I./RSDKv4/NativeObjects \
             -I./dependencies/all/asio/asio/include \
             -I./dependencies/all/stb-image \
-            -I./dependencies/all/tinyxml2 \
+            -I$TINYXML_DIR \
             -I./dependencies/all/theoraplay"
 
-          # --- STEP 3: DEFINE SOURCES ---
-          # 1. All RSDKv4 engine files
+          # --- STEP 4: GATHER SOURCES ---
+          # 1. Main Engine
           SOURCES=$(find RSDKv4 -name "*.cpp")
           
-          # 2. Dependencies listed in your Makefile's "SOURCES" variable
-          # We add tinyxml2.cpp so the Mod API works
-          SOURCES="$SOURCES dependencies/all/tinyxml2/tinyxml2.cpp"
+          # 2. Mod Loader Dependency (TinyXML2)
+          SOURCES="$SOURCES $(find "$TINYXML_DIR" -name "tinyxml2.cpp")"
           
-          # 3. Theoraplay (Video support) - Find .c or .cpp
-          SOURCES="$SOURCES $(find dependencies/all/theoraplay -name "theoraplay.c*" -o -name "theoraplay.cpp*")"
+          # 3. Video Dependency (TheoraPlay) - usually a .c file
+          SOURCES="$SOURCES $(find dependencies/all/theoraplay -name "theoraplay.c")"
 
-          # --- STEP 4: DEFINE FLAGS ---
-          # Based on your Makefile flags + Emscripten requirements
+          # --- STEP 5: DEFINE FLAGS ---
+          # -DRETRO_PLATFORM=12: Matches our patch above (Custom Web)
+          # -DRETRO_SDL_VERSION=2: Forces the engine to use SDL2
+          # We REMOVED -DRETRO_USE_MOD_LOADER because the code enables it automatically.
           FLAGS="-O3 \
             -std=c++17 \
             -fsigned-char \
-            -DRETRO_PLATFORM=5 \
+            -DRETRO_PLATFORM=12 \
             -DRETRO_SDL_VERSION=2 \
-            -DRETRO_USE_MOD_LOADER=1 \
             -s USE_SDL=2 \
             -s USE_OGG=1 \
             -s USE_VORBIS=1 \
@@ -69,8 +74,8 @@ jobs:
             -Wno-macro-redefined \
             -Wno-format"
 
-          # --- STEP 5: COMPILE ---
-          echo "Compiling TeamForever..."
+          # --- STEP 6: COMPILE ---
+          echo "Compiling with Platform ID 12..."
           emcc $SOURCES $INCLUDES $FLAGS -o dist/rsdkv4.js
 
       - name: Upload Artifacts
