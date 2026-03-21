@@ -284,7 +284,7 @@ enum RetroGameType {
 
 #if RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_UWP || RETRO_PLATFORM == RETRO_ANDROID || RETRO_PLATFORM == RETRO_LINUX
 #if RETRO_USING_SDL2
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #elif RETRO_USING_SDL1
 #include <SDL.h>
 #endif
