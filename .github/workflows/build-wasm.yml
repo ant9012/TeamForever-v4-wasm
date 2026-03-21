@@ -2,7 +2,7 @@ name: Build TeamForever Wasm
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "foreve" ]
   workflow_dispatch:
 
 jobs:
