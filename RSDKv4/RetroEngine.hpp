@@ -477,16 +477,25 @@ public:
 #endif
 
 #if !RETRO_USE_ORIGINAL_CODE
-#if RETRO_USING_SDL2
+    // --- FORCE ENABLED FOR WASM ---
     SDL_Window *window = nullptr;
-#if !RETRO_USING_OPENGL
     SDL_Renderer *renderer = nullptr;
+    SDL_Event sdlEvents;
+    // ------------------------------
+
+#if RETRO_USING_SDL2
+#if !RETRO_USING_OPENGL
 #if RETRO_SOFTWARE_RENDER
     SDL_Texture *screenBuffer   = nullptr;
     SDL_Texture *screenBuffer2x = nullptr;
     SDL_Texture *videoBuffer = nullptr;
 #endif // RETRO_SOFTWARE_RENDERER
 #endif
+
+#if RETRO_USING_OPENGL
+    SDL_GLContext glContext; // OpenGL context
+#endif // RETRO_USING_OPENGL
+#endif // RETRO_USING_SDL2
 
     SDL_Event sdlEvents;
 
