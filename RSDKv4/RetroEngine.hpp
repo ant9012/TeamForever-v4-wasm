@@ -477,44 +477,25 @@ public:
 #endif
 
 #if !RETRO_USE_ORIGINAL_CODE
-    // --- FORCE ENABLED FOR WASM ---
+    // =============================================================
+    // MANUAL FIX FOR WEB / SDL2
+    // =============================================================
+
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
     SDL_Event sdlEvents;
-    // ------------------------------
 
-#if RETRO_USING_SDL2
-#if !RETRO_USING_OPENGL
-#if RETRO_SOFTWARE_RENDER
+    // Texture buffers for software rendering
+    // We declare these blindly to avoid #ifdef hell
     SDL_Texture *screenBuffer   = nullptr;
     SDL_Texture *screenBuffer2x = nullptr;
-    SDL_Texture *videoBuffer = nullptr;
-#endif // RETRO_SOFTWARE_RENDERER
-#endif
+    SDL_Texture *videoBuffer    = nullptr;
 
-#if RETRO_USING_OPENGL
-    SDL_GLContext glContext; // OpenGL context
-#endif // RETRO_USING_OPENGL
-#endif // RETRO_USING_SDL2
+    // OpenGL Context (Optional, harmless if unused)
+    // SDL_GLContext glContext; 
 
-    SDL_Event sdlEvents;
-
-#if RETRO_USING_OPENGL
-    SDL_GLContext glContext; // OpenGL context
-#endif // RETRO_USING_OPENGL
-#endif // RETRO_USING_SDL2
-
-#if RETRO_USING_SDL1
-    SDL_Surface *windowSurface = nullptr;
-
-    SDL_Surface *screenBuffer   = nullptr;
-    SDL_Surface *screenBuffer2x = nullptr;
-    SDL_Surface *videoBuffer = nullptr;
-
-    SDL_Event sdlEvents;
-#endif // RETRO_USING_SDL1
-#endif //! RETRO_USE_ORIGINAL_CODE
-};
+    // =============================================================
+}; 
 
 extern RetroEngine Engine;
 #endif // !RETROENGINE_H
