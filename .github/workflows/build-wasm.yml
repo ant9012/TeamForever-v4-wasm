@@ -1,4 +1,4 @@
-name: Build TeamForever Wasm (Fixed Platform)
+name: Build TeamForever Wasm
 
 on:
   push:
@@ -20,66 +20,28 @@ jobs:
         with:
           version: '3.1.53'
 
-      - name: Patch and Compile
+      - name: Verify Config Exists
         run: |
-          mkdir dist
-          
-          # --- STEP 1: FIX PLATFORM ID ---
-          # Problem: TeamForever uses ID 5 for Android.
-          # Solution: We patch the code to use ID 12 (Custom Web) to avoid Android includes.
-          sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#define RETRO_PLATFORM   (12)/' RSDKv4/RetroEngine.hpp
-          
-          # --- STEP 2: LOCATE DEPENDENCIES ---
-          # We need to find exactly where TinyXML2 and TheoraPlay are.
-          TINYXML_PATH=$(find dependencies -name "tinyxml2.h" -print -quit)
-          TINYXML_DIR=$(dirname "$TINYXML_PATH")
-          
-          # --- STEP 3: DEFINE INCLUDES ---
-          # We add the paths found above + the ones from your Makefile
-          INCLUDES="-I. \
-            -I./RSDKv4 \
-            -I./RSDKv4/NativeObjects \
-            -I./dependencies/all/asio/asio/include \
-            -I./dependencies/all/stb-image \
-            -I$TINYXML_DIR \
-            -I./dependencies/all/theoraplay"
+          if [ ! -f Makefile_cfgs/Platforms/Emscripten.cfg ]; then
+            echo "Error: Emscripten.cfg not found in Makefile_cfgs/Platforms/"
+            exit 1
+          fi
 
-          # --- STEP 4: GATHER SOURCES ---
-          # 1. Main Engine
-          SOURCES=$(find RSDKv4 -name "*.cpp")
-          
-          # 2. Mod Loader Dependency (TinyXML2)
-          SOURCES="$SOURCES $(find "$TINYXML_DIR" -name "tinyxml2.cpp")"
-          
-          # 3. Video Dependency (TheoraPlay) - usually a .c file
-          SOURCES="$SOURCES $(find dependencies/all/theoraplay -name "theoraplay.c")"
+      - name: Build
+        run: |
+          # We define PLATFORM=Emscripten so the Makefile loads our new cfg file.
+          # We use emmake to ensure environment variables are set correctly.
+          emmake make PLATFORM=Emscripten -j$(nproc)
 
-          # --- STEP 5: DEFINE FLAGS ---
-          # -DRETRO_PLATFORM=12: Matches our patch above (Custom Web)
-          # -DRETRO_SDL_VERSION=2: Forces the engine to use SDL2
-          # We REMOVED -DRETRO_USE_MOD_LOADER because the code enables it automatically.
-          FLAGS="-O3 \
-            -std=c++17 \
-            -fsigned-char \
-            -DRETRO_PLATFORM=12 \
-            -DRETRO_SDL_VERSION=2 \
-            -s USE_SDL=2 \
-            -s USE_OGG=1 \
-            -s USE_VORBIS=1 \
-            -s ALLOW_MEMORY_GROWTH=1 \
-            -s ASSERTIONS=0 \
-            -s EXPORT_NAME='Module' \
-            -s MODULARIZE=0 \
-            -s EXPORTED_RUNTIME_METHODS=['FS','callMain','cwrap','ccall'] \
-            -Wno-macro-redefined \
-            -Wno-format"
-
-          # --- STEP 6: COMPILE ---
-          echo "Compiling with Platform ID 12..."
-          emcc $SOURCES $INCLUDES $FLAGS -o dist/rsdkv4.js
+      - name: Prepare Artifacts
+        run: |
+          mkdir output
+          # The Makefile outputs to bin/Emscripten/
+          cp bin/Emscripten/rsdkv4.js output/
+          cp bin/Emscripten/rsdkv4.wasm output/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rsdk-wasm-output
-          path: dist/
+          path: output/
