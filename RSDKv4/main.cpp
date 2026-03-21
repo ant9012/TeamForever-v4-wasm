@@ -105,3 +105,36 @@ int main(int argc, char *argv[])
 #if RETRO_PLATFORM == RETRO_UWP
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) { return SDL_WinRTRunApp(main, NULL); }
 #endif
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+extern "C" {
+    // Called by the JS wrapper to set settings (Mobile vs Standard)
+    // type: 0 = Plus Mode (Unused in v4), 1 = Device Profile
+    // value: 0 = Standard, 1 = Mobile
+    void EMSCRIPTEN_KEEPALIVE RSDK_Configure(int value, int type)
+    {
+        if (type == 1) {
+            if (value == 1) {
+                Engine.gameDeviceType = RETRO_MOBILE;
+                Engine.gamePlatform   = "MOBILE";
+            }
+            else {
+                Engine.gameDeviceType = RETRO_STANDARD;
+                Engine.gamePlatform   = "STANDARD";
+            }
+        }
+    }
+
+    // Called by the JS wrapper to actually start the game
+    void EMSCRIPTEN_KEEPALIVE RSDK_Initialize()
+    {
+        // We manually call main. 
+        // Since main() usually enters an infinite loop or emscripten_set_main_loop,
+        // this is how we start the engine.
+        main(0, NULL);
+    }
+}
+#endif
+
