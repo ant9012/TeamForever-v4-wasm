@@ -141,7 +141,7 @@ $(OBJDIR)/%.o: %.c
 $(OBJDIR)/%.o: %.cpp
 	@mkdir -p $(@D)
 	@echo -n Compiling $<...
-	$(CXX) -c $(CFLAGS) $(INCLUDES) $(DEFINES) $< -o $@
+	$(CXX) -c $(CFLAGS) $(CXXFLAGS) $(INCLUDES) $(DEFINES) $< -o $@
 	@echo " Done!"
 
 $(BINPATH): $(OBJDIR) $(OBJECTS)
