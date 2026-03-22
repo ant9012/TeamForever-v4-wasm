@@ -1,4 +1,17 @@
 #include "RetroEngine.hpp"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#define EMSCRIPTEN_SYNC_FS() EM_ASM({ \
+    if (typeof FS !== 'undefined') { \
+        FS.syncfs(false, function(err) { \
+            if (err) console.error('FS Sync Error:', err); \
+            else console.log('FileSystem Synced to IndexedDB!'); \
+        }); \
+    } \
+})
+#else
+#define EMSCRIPTEN_SYNC_FS()
+#endif
 
 // Your guess is as good as mine
 #if RETRO_PLATFORM == RETRO_SWITCH
@@ -191,6 +204,8 @@ bool WriteSaveRAMData()
     fWrite(saveRAM, sizeof(int), SAVEDATA_SIZE, saveFile);
     fClose(saveFile);
     return true;
+
+	EMSCRIPTEN_SYNC_FS();
 }
 
 void InitUserdata()
@@ -817,6 +832,8 @@ void WriteSettings()
 #endif
 
     ini.Write(buffer, false);
+
+ EMSCRIPTEN_SYNC_FS();
 }
 
 void ReadUserdata()
