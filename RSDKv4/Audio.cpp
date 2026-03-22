@@ -54,11 +54,18 @@ int InitAudioPlayback()
     SDL_AudioSpec want;
     want.freq     = AUDIO_FREQUENCY;
     want.format   = AUDIO_FORMAT;
-    want.samples  = AUDIO_SAMPLES;
     want.channels = AUDIO_CHANNELS;
     want.callback = ProcessAudioPlayback;
 
+#ifdef __EMSCRIPTEN__
+    want.samples = 2048; 
+#else
+    want.samples = AUDIO_SAMPLES;
+#endif
+
+
 #if RETRO_USING_SDL2
+	int allowedChanges = SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE;
     if ((audioDevice = SDL_OpenAudioDevice(nullptr, 0, &want, &audioDeviceFormat, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE)) > 0) {
         audioEnabled = true;
         SDL_PauseAudioDevice(audioDevice, 0);
