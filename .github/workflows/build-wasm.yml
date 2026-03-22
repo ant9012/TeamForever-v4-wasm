@@ -21,6 +21,7 @@ jobs:
           version: '3.1.53'
 
       - name: Build LibTheora (Pthreads + Static)
+        # We build this manually to ensure it uses Pthreads, matching the engine.
         run: |
           wget https://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.gz
           tar -xf libtheora-1.1.1.tar.gz
@@ -30,7 +31,7 @@ jobs:
           wget -O config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
           wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'
 
-          # Force Pthreads here too
+          # CFLAGS must include -pthread so it links with the engine correctly
           export CFLAGS="-s USE_OGG=1 -O3 -pthread"
           export LDFLAGS="-s USE_OGG=1 -pthread"
           
@@ -47,53 +48,45 @@ jobs:
           mkdir -p dependencies/all/theoraplay
           cp -r $THEORA_SRC/* dependencies/all/theoraplay/ 2>/dev/null || true
 
-      - name: Inject JS Bridge (main.cpp)
-        run: |
-          cat >> RSDKv4/main.cpp <<EOF
-          #ifdef __EMSCRIPTEN__
-          #include <emscripten.h>
-          extern "C" {
-              void EMSCRIPTEN_KEEPALIVE RSDK_Configure(int value, int type) {
-                  if (type == 1) {
-                      Engine.gameDeviceType = (value == 1) ? 1 : 0;
-                      Engine.gamePlatform = (value == 1) ? "MOBILE" : "STANDARD";
-                  }
-              }
-              void EMSCRIPTEN_KEEPALIVE RSDK_Initialize() { main(0, NULL); }
-          }
-          #endif
-          EOF
-
       - name: Patch Makefile and Headers
         run: |
+          # Clean linker flags to stop warnings
           sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
+          
+          # Force Platform ID 4 (Linux logic for SDL2)
           sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#ifndef RETRO_PLATFORM\n#define RETRO_PLATFORM (RETRO_WIN)\n#endif/' RSDKv4/RetroEngine.hpp
+          
+          # Remove Windows.h if it still exists (Safety check)
           sed -i 's/#include "Windows.h"//' RSDKv4/main.cpp
 
       - name: Build Engine (Force Pthreads)
         run: |
-          # We use environment variables to FORCE these flags, ignoring the Makefile if it tries to strip them.
-          export EMCC_CFLAGS="-pthread -s USE_SDL=2 -s USE_OGG=1 -s USE_VORBIS=1"
+          # 1. Force Compiler Flags (Pthreads + Headers)
+          # We use env vars to override the Makefile logic if needed.
+          export CFLAGS="-pthread -O3 -s USE_SDL=2 -s USE_OGG=1 -s USE_VORBIS=1 -I./dependencies/libtheora/include"
           
-          # We add the PTHREAD_POOL_SIZE here to ensure the worker is generated.
-          export EMCC_LDFLAGS="-pthread -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=\"['_main', '_RSDK_Initialize', '_RSDK_Configure']\" -s INVOKE_RUN=0"
+          # 2. Force Linker Flags (Pthreads + Worker Generation)
+          # PTHREAD_POOL_SIZE is what triggers the creation of the .worker.js file.
+          export LDFLAGS="-pthread -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=\"['_main', '_RSDK_Initialize', '_RSDK_Configure']\" -s INVOKE_RUN=0"
           
+          # 3. Run Make
           emmake make PLATFORM=Emscripten -j$(nproc)
+
+      - name: Check for Worker File
+        run: |
+          if [ -f "bin/Emscripten/rsdkv4.worker.js" ]; then
+            echo "SUCCESS: Worker file generated."
+          else
+            echo "ERROR: Worker file MISSING. Check linker flags."
+            exit 1
+          fi
 
       - name: Prepare Artifacts
         run: |
           mkdir output
           cp bin/Emscripten/rsdkv4.js output/
           cp bin/Emscripten/rsdkv4.wasm output/
-          
-          # We explicitly check for the worker file now.
-          if [ -f "bin/Emscripten/rsdkv4.worker.js" ]; then
-            cp bin/Emscripten/rsdkv4.worker.js output/
-            echo "Worker file found and copied."
-          else
-            echo "::error::Worker file NOT found! Pthreads build failed."
-            exit 1
-          fi
+          cp bin/Emscripten/rsdkv4.worker.js output/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
