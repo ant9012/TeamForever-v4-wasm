@@ -52,7 +52,7 @@ int InitAudioPlayback()
 #if !RETRO_USE_ORIGINAL_CODE
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
 
-    // === FIX: Ensure SDL Audio Subsystem is initialized ===
+    // Ensure SDL Audio Subsystem is initialized
     if (SDL_WasInit(SDL_INIT_AUDIO) == 0) {
         printf("=== Initializing SDL Audio Subsystem ===\n");
         fflush(stdout);
@@ -67,7 +67,7 @@ int InitAudioPlayback()
     SDL_AudioSpec want;
     SDL_memset(&want, 0, sizeof(want));
     want.freq     = AUDIO_FREQUENCY;
-    want.format   = AUDIO_FORMAT;
+    want.format   = AUDIO_FORMAT; // AUDIO_S16SYS
     want.channels = AUDIO_CHANNELS;
     want.callback = ProcessAudioPlayback;
 
@@ -78,7 +78,9 @@ int InitAudioPlayback()
 #endif
 
 #if RETRO_USING_SDL2
-    int allowedChanges = SDL_AUDIO_ALLOW_ANY_CHANGE; // Allow browser to force its preferred format
+    // FIX: Only allow Frequency and Samples to change. 
+    // Do NOT allow Format to change, or the 16-bit mixer will create digital static!
+    int allowedChanges = SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE;
     
     printf("=== Attempting to open SDL Audio Device ===\n");
     fflush(stdout);
@@ -89,7 +91,7 @@ int InitAudioPlayback()
         fflush(stdout);
         
         audioEnabled = true;
-        SDL_PauseAudioDevice(audioDevice, 0); // 0 means UNPAUSE
+        SDL_PauseAudioDevice(audioDevice, 0);
     }
     else {
         printf("=== Audio FAILED TO OPEN: %s ===\n", SDL_GetError());
@@ -101,7 +103,7 @@ int InitAudioPlayback()
     if (audioEnabled) {
         ogv_stream = SDL_NewAudioStream(AUDIO_F32SYS, 2, 48000, audioDeviceFormat.format, audioDeviceFormat.channels, audioDeviceFormat.freq);
         if (!ogv_stream) {
-            printf("=== OGV Video Stream FAILED: %s. (Ignoring so game audio still works) ===\n", SDL_GetError());
+            printf("=== OGV Video Stream FAILED: %s. (Ignoring) ===\n", SDL_GetError());
             fflush(stdout);
         }
     }
