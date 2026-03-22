@@ -63,11 +63,11 @@ jobs:
         run: |
           # 1. Force Compiler Flags (Pthreads + Headers)
           # We use env vars to override the Makefile logic if needed.
-          export CFLAGS="-pthread -O3 -s USE_SDL=2 -s USE_OGG=1 -s USE_VORBIS=1 -I./dependencies/libtheora/include"
+          export CFLAGS="-pthread -O3 -s USE_SDL=2 -s USE_SDL_IMAGE=1 -s USE_OGG=1 -s USE_VORBIS=1 -I./dependencies/libtheora/include"
           
           # 2. Force Linker Flags (Pthreads + Worker Generation)
           # PTHREAD_POOL_SIZE is what triggers the creation of the .worker.js file.
-          export LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=\"['_main', '_RSDK_Initialize', '_RSDK_Configure']\" -s INVOKE_RUN=0"
+          export LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -lm -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=\"['_main', '_RSDK_Initialize', '_RSDK_Configure']\" -s INVOKE_RUN=0"
           
           # 3. Run Make
           emmake make PLATFORM=Emscripten -j$(nproc)
