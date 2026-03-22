@@ -11,3 +11,11 @@ export CFLAGS="-s USE_OGG=1 -O3 -pthread"
 export LDFLAGS="-s USE_OGG=1 -pthread"
 emconfigure ./configure --disable-asm --disable-examples --disable-spec --disable-shared --enable-static --disable-encode
 emmake make -j$(nproc)
+
+sed -i 's/INCLUDES += $(LIBS)/# INCLUDES += $(LIBS)/' Makefile
+          
+          # Force Platform ID 4 (Linux logic for SDL2)
+sed -i 's/#define RETRO_PLATFORM   (RETRO_WIN)/#ifndef RETRO_PLATFORM\n#define RETRO_PLATFORM (RETRO_WIN)\n#endif/' RSDKv4/RetroEngine.hpp
+          
+          # Remove Windows.h if it still exists (Safety check)
+sed -i 's/#include "Windows.h"//' RSDKv4/main.cpp
