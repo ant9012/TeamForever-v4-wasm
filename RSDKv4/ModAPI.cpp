@@ -1,4 +1,17 @@
 #include "RetroEngine.hpp"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#define EMSCRIPTEN_SYNC_FS() EM_ASM({ \
+    if (typeof FS !== 'undefined') { \
+        FS.syncfs(false, function(err) { \
+            if (err) console.error('FS Sync Error:', err); \
+            else console.log('FileSystem Synced to IndexedDB!'); \
+        }); \
+    } \
+})
+#else
+#define EMSCRIPTEN_SYNC_FS()
+#endif
 
 #if RETRO_USE_MOD_LOADER || !RETRO_USE_ORIGINAL_CODE
 char savePath[0x100];
@@ -411,6 +424,7 @@ void SaveMods()
 
         modConfig.Write(mod_config.c_str(), false);
     }
+		EMSCRIPTEN_SYNC_FS();
 }
 
 void RefreshEngine()
