@@ -20,11 +20,23 @@ jobs:
         with:
           version: '3.1.53'
 
-      - name: Build Engine
+      - name: Build LibTheora (Pthreads + Static)
+        # We build this manually to ensure it uses Pthreads, matching the engine.
         run: |
-          emmake make PLATFORM=Emscripten \
-            LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
-            -j$(nproc)
+          wget https://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.gz
+          tar -xf libtheora-1.1.1.tar.gz
+          mv libtheora-1.1.1 dependencies/libtheora
+
+          cd dependencies/libtheora
+          wget -O config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
+          wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'
+
+          # CFLAGS must include -pthread so it links with the engine correctly
+          export CFLAGS="-s USE_OGG=1 -O3 -pthread"
+          export LDFLAGS="-s USE_OGG=1 -pthread"
+          
+          emconfigure ./configure --disable-asm --disable-examples --disable-spec --disable-shared --enable-static --disable-encode
+          emmake make -j$(nproc)
 
       - name: Fix Dependency Paths
         run: |
@@ -47,18 +59,11 @@ jobs:
           # Remove Windows.h if it still exists (Safety check)
           sed -i 's/#include "Windows.h"//' RSDKv4/main.cpp
 
-      - name: Build Engine (Force Pthreads)
+      - name: Build Engine
         run: |
-          # 1. Force Compiler Flags (Pthreads + Headers)
-          # We use env vars to override the Makefile logic if needed.
-          export CFLAGS="-pthread -O3 -s USE_SDL=2 -s USE_SDL_IMAGE=1 -s USE_OGG=1 -s USE_VORBIS=1 -I./dependencies/libtheora/include"
-          
-          # 2. Force Linker Flags (Pthreads + Worker Generation)
-          # PTHREAD_POOL_SIZE is what triggers the creation of the .worker.js file.
-          export LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -lm -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=\"['_main', '_RSDK_Initialize', '_RSDK_Configure']\" -s INVOKE_RUN=0"
-          
-          # 3. Run Make
-          emmake make PLATFORM=Emscripten -j$(nproc)
+          emmake make PLATFORM=Emscripten \
+            LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
+            -j$(nproc)
 
       - name: Check for Worker File
         run: |
