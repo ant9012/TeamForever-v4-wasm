@@ -54,8 +54,6 @@ int InitAudioPlayback()
 
     // Ensure SDL Audio Subsystem is initialized
     if (SDL_WasInit(SDL_INIT_AUDIO) == 0) {
-        printf("=== Initializing SDL Audio Subsystem ===\n");
-        fflush(stdout);
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
             printf("=== FAILED to init SDL Audio Subsystem: %s ===\n", SDL_GetError());
             fflush(stdout);
@@ -66,9 +64,9 @@ int InitAudioPlayback()
 
     SDL_AudioSpec want;
     SDL_memset(&want, 0, sizeof(want));
-    want.freq     = AUDIO_FREQUENCY;
-    want.format   = AUDIO_FORMAT; // AUDIO_S16SYS
-    want.channels = AUDIO_CHANNELS;
+    want.freq     = AUDIO_FREQUENCY; // 44100
+    want.format   = AUDIO_FORMAT;    // AUDIO_S16SYS
+    want.channels = AUDIO_CHANNELS;  // 2
     want.callback = ProcessAudioPlayback;
 
 #ifdef __EMSCRIPTEN__
@@ -78,9 +76,10 @@ int InitAudioPlayback()
 #endif
 
 #if RETRO_USING_SDL2
-    // FIX: Only allow Frequency and Samples to change. 
-    // Do NOT allow Format to change, or the 16-bit mixer will create digital static!
-    int allowedChanges = SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE;
+    // FIX: Set allowedChanges to 0!
+    // The engine's mixer has hardcoded 16-bit, 44.1kHz logic.
+    // Setting this to 0 forces SDL2 to do transparent background resampling for the web browser.
+    int allowedChanges = 0; 
     
     printf("=== Attempting to open SDL Audio Device ===\n");
     fflush(stdout);
@@ -102,10 +101,6 @@ int InitAudioPlayback()
 
     if (audioEnabled) {
         ogv_stream = SDL_NewAudioStream(AUDIO_F32SYS, 2, 48000, audioDeviceFormat.format, audioDeviceFormat.channels, audioDeviceFormat.freq);
-        if (!ogv_stream) {
-            printf("=== OGV Video Stream FAILED: %s. (Ignoring) ===\n", SDL_GetError());
-            fflush(stdout);
-        }
     }
 #elif RETRO_USING_SDL1
     if (SDL_OpenAudio(&want, &audioDeviceFormat) == 0) {
@@ -116,7 +111,7 @@ int InitAudioPlayback()
         audioEnabled = false;
         return true; 
     }
-#endif // !RETRO_USING_SDL1
+#endif 
 #endif
 #endif
 
