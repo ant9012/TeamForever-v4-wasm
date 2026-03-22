@@ -88,7 +88,9 @@ chmod +x setup-emscripten.sh
 ```
 * After you do that, run this command in the root of the repo:
 ```bash
-emmake make PLATFORM=Emscripten
+emmake make PLATFORM=Emscripten \
+            LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
+            -j$(nproc)
 ```
 and you should see RSDKv4.js and RSDKv4.wasm, and RSDKv4.worker.js in that folder, and that should be it!
 
