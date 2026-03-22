@@ -506,7 +506,6 @@ void RetroEngine_EmFrame()
 {
     if (!Engine.running) {
         emscripten_cancel_main_loop();
-
         ReleaseAudioDevice();
         StopVideoPlayback();
         ReleaseRenderDevice();
@@ -528,12 +527,11 @@ void RetroEngine_EmFrame()
 
     unsigned long long curTicks = SDL_GetPerformanceCounter();
     if (curTicks < em_prevTicks + em_targetFreq)
-        return; // Not time yet — just skip this frame
+        return;
     em_prevTicks = curTicks;
 
     Engine.deltaTime = 1.0 / 60;
-
-    Engine.running = processEvents();
+    Engine.running   = processEvents();
 
     if (em_lastFPS != Engine.refreshRate) {
         em_targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
@@ -543,7 +541,6 @@ void RetroEngine_EmFrame()
     if (!(Engine.focusState & 1) || vsPlaying) {
         for (int s = 0; s < Engine.gameSpeed; ++s) {
             ProcessInput();
-
             if (!Engine.masterPaused || Engine.frameStep) {
                 ProcessNativeObjects();
             }
@@ -551,7 +548,6 @@ void RetroEngine_EmFrame()
 
         if (!Engine.masterPaused || Engine.frameStep) {
             FlipScreen();
-
 #if RETRO_USING_OPENGL && RETRO_USING_SDL2
             SDL_GL_SwapWindow(Engine.window);
 #endif
@@ -565,10 +561,8 @@ void RetroEngine_EmFrame()
 #if RETRO_USE_HAPTICS
         int hapticID = GetHapticEffectNum();
         if (hapticID >= 0) {
-            // playHaptics(hapticID);
         }
         else if (hapticID == HAPTIC_STOP) {
-            // stopHaptics();
         }
 #endif
     }
@@ -581,6 +575,14 @@ void RetroEngine::Run()
     Engine.deltaTime = 0.0f;
 
 #ifdef __EMSCRIPTEN__
+    static bool loopStarted = false;
+    if (loopStarted) {
+        printf("=== Run() called again — ignoring ===\n");
+        fflush(stdout);
+        return;
+    }
+    loopStarted = true;
+
     em_targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
     em_prevTicks  = SDL_GetPerformanceCounter();
     em_lastFPS    = Engine.refreshRate;
@@ -588,9 +590,10 @@ void RetroEngine::Run()
     printf("=== Starting emscripten_set_main_loop ===\n");
     fflush(stdout);
 
-    // 0 = use requestAnimationFrame for timing, 1 = simulate infinite loop
-    emscripten_set_main_loop(RetroEngine_EmFrame, 0, 1);
+    emscripten_set_main_loop(RetroEngine_EmFrame, 0, 0);
+    return;
 #else
+    // ... keep entire original native while(running) loop unchanged ...
     unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
     unsigned long long curTicks   = 0;
     unsigned long long prevTicks  = 0;
