@@ -525,18 +525,8 @@ void RetroEngine_EmFrame()
         return;
     }
 
-    unsigned long long curTicks = SDL_GetPerformanceCounter();
-    if (curTicks < em_prevTicks + em_targetFreq)
-        return;
-    em_prevTicks = curTicks;
-
-    Engine.deltaTime = 1.0 / 60;
+    Engine.deltaTime = 1.0 / 60.0;
     Engine.running   = processEvents();
-
-    if (em_lastFPS != Engine.refreshRate) {
-        em_targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
-        em_lastFPS    = Engine.refreshRate;
-    }
 
     if (!(Engine.focusState & 1) || vsPlaying) {
         for (int s = 0; s < Engine.gameSpeed; ++s) {
@@ -590,7 +580,7 @@ void RetroEngine::Run()
     printf("=== Starting emscripten_set_main_loop ===\n");
     fflush(stdout);
 
-    emscripten_set_main_loop(RetroEngine_EmFrame, 0, 0);
+    emscripten_set_main_loop(RetroEngine_EmFrame, 60, 0);
     return;
 #else
     // ... keep entire original native while(running) loop unchanged ...
