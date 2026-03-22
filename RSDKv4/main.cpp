@@ -73,6 +73,8 @@ static void initNxLink()
 }
 #endif
 
+#ifndef __EMSCRIPTEN__
+// ========== NATIVE MAIN ==========
 int main(int argc, char *argv[])
 {
 #ifdef NXLINK
@@ -91,13 +93,13 @@ int main(int argc, char *argv[])
     if (Engine.consoleEnabled) {
 #if RETRO_PLATFORM == RETRO_WIN
         FreeConsole();
-#endif //! RETRO_PLATFORM == RETRO_WIN
+#endif
     }
-#endif //! !RETRO_USE_ORIGINAL_CODE
+#endif
 
 #ifdef NXLINK
     socketExit();
-#endif //! NXLINK
+#endif
 
     return 0;
 }
@@ -106,15 +108,25 @@ int main(int argc, char *argv[])
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) { return SDL_WinRTRunApp(main, NULL); }
 #endif
 
-#ifdef __EMSCRIPTEN__
+#else
+// ========== EMSCRIPTEN ==========
 #include <emscripten.h>
 
+// main() is a no-op on Emscripten.
+// The JS wrapper calls RSDK_Configure + RSDK_Initialize instead.
+int main(int argc, char *argv[])
+{
+    printf("=== main() called — Emscripten no-op, use RSDK_Initialize() ===\n");
+    fflush(stdout);
+    return 0;
+}
+
 extern "C" {
-    // Called by the JS wrapper to set settings (Mobile vs Standard)
-    // type: 0 = Plus Mode (Unused in v4), 1 = Device Profile
-    // value: 0 = Standard, 1 = Mobile
     void EMSCRIPTEN_KEEPALIVE RSDK_Configure(int value, int type)
     {
+        printf("=== RSDK_Configure(%d, %d) ===\n", value, type);
+        fflush(stdout);
+
         if (type == 1) {
             if (value == 1) {
                 Engine.gameDeviceType = RETRO_MOBILE;
@@ -127,14 +139,26 @@ extern "C" {
         }
     }
 
-    // Called by the JS wrapper to actually start the game
     void EMSCRIPTEN_KEEPALIVE RSDK_Initialize()
     {
-        // We manually call main. 
-        // Since main() usually enters an infinite loop or emscripten_set_main_loop,
-        // this is how we start the engine.
-        main(0, NULL);
+        printf("=== RSDK_Initialize() called ===\n");
+        fflush(stdout);
+
+        SDL_SetHint(SDL_HINT_WINRT_HANDLE_BACK_BUTTON, "1");
+
+        printf("=== Calling Engine.Init() ===\n");
+        fflush(stdout);
+        Engine.Init();
+
+        printf("=== Calling Engine.Run() ===\n");
+        fflush(stdout);
+        Engine.Run();
+        // With emscripten_set_main_loop(..., 0, 0), Run() returns immediately.
+        // Game loop continues via requestAnimationFrame.
+
+        printf("=== Engine.Run() returned, main loop is active ===\n");
+        fflush(stdout);
     }
 }
-#endif
 
+#endif // __EMSCRIPTEN__
