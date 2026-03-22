@@ -52,6 +52,7 @@ int InitAudioPlayback()
 #if !RETRO_USE_ORIGINAL_CODE
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_AudioSpec want;
+    SDL_memset(&want, 0, sizeof(want));
     want.freq     = AUDIO_FREQUENCY;
     want.format   = AUDIO_FORMAT;
     want.channels = AUDIO_CHANNELS;
@@ -63,25 +64,34 @@ int InitAudioPlayback()
     want.samples = AUDIO_SAMPLES;
 #endif
 
-
 #if RETRO_USING_SDL2
-	int allowedChanges = SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_SAMPLES_CHANGE;
-    if ((audioDevice = SDL_OpenAudioDevice(nullptr, 0, &want, &audioDeviceFormat, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE)) > 0) {
+    int allowedChanges = SDL_AUDIO_ALLOW_ANY_CHANGE; // Allow browser to force its preferred format
+    
+    printf("=== Attempting to open SDL Audio Device ===\n");
+    fflush(stdout);
+
+    if ((audioDevice = SDL_OpenAudioDevice(nullptr, 0, &want, &audioDeviceFormat, allowedChanges)) > 0) {
+        printf("=== Audio OPENED | Freq: %d, Channels: %d, Format: %d, Samples: %d ===\n", 
+               audioDeviceFormat.freq, audioDeviceFormat.channels, audioDeviceFormat.format, audioDeviceFormat.samples);
+        fflush(stdout);
+        
         audioEnabled = true;
         SDL_PauseAudioDevice(audioDevice, 0);
     }
     else {
-        PrintLog("Unable to open audio device: %s", SDL_GetError());
+        printf("=== Audio FAILED TO OPEN: %s ===\n", SDL_GetError());
+        fflush(stdout);
         audioEnabled = false;
-        return true; // no audio but game wont crash now
+        return true; 
     }
 
-    ogv_stream = SDL_NewAudioStream(AUDIO_F32SYS, 2, 48000, audioDeviceFormat.format, audioDeviceFormat.channels, audioDeviceFormat.freq);
-    if (!ogv_stream) {
-        PrintLog("Failed to create stream: %s", SDL_GetError());
-        SDL_CloseAudioDevice(audioDevice);
-        audioEnabled = false;
-        return true;
+    if (audioEnabled) {
+        ogv_stream = SDL_NewAudioStream(AUDIO_F32SYS, 2, 48000, audioDeviceFormat.format, audioDeviceFormat.channels, audioDeviceFormat.freq);
+        if (!ogv_stream) {
+            printf("=== OGV Video Stream FAILED: %s. (Ignoring so game audio still works) ===\n", SDL_GetError());
+            fflush(stdout);
+            // We removed the code here that previously killed ALL audio if the video audio stream failed!
+        }
     }
 #elif RETRO_USING_SDL1
     if (SDL_OpenAudio(&want, &audioDeviceFormat) == 0) {
@@ -89,9 +99,8 @@ int InitAudioPlayback()
         SDL_PauseAudio(0);
     }
     else {
-        PrintLog("Unable to open audio device: %s", SDL_GetError());
         audioEnabled = false;
-        return true; // no audio but game wont crash now
+        return true; 
     }
 #endif // !RETRO_USING_SDL1
 #endif
