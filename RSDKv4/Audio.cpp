@@ -51,6 +51,19 @@ int InitAudioPlayback()
 
 #if !RETRO_USE_ORIGINAL_CODE
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
+
+    // === FIX: Ensure SDL Audio Subsystem is initialized ===
+    if (SDL_WasInit(SDL_INIT_AUDIO) == 0) {
+        printf("=== Initializing SDL Audio Subsystem ===\n");
+        fflush(stdout);
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+            printf("=== FAILED to init SDL Audio Subsystem: %s ===\n", SDL_GetError());
+            fflush(stdout);
+            audioEnabled = false;
+            return true;
+        }
+    }
+
     SDL_AudioSpec want;
     SDL_memset(&want, 0, sizeof(want));
     want.freq     = AUDIO_FREQUENCY;
@@ -76,7 +89,7 @@ int InitAudioPlayback()
         fflush(stdout);
         
         audioEnabled = true;
-        SDL_PauseAudioDevice(audioDevice, 0);
+        SDL_PauseAudioDevice(audioDevice, 0); // 0 means UNPAUSE
     }
     else {
         printf("=== Audio FAILED TO OPEN: %s ===\n", SDL_GetError());
@@ -90,7 +103,6 @@ int InitAudioPlayback()
         if (!ogv_stream) {
             printf("=== OGV Video Stream FAILED: %s. (Ignoring so game audio still works) ===\n", SDL_GetError());
             fflush(stdout);
-            // We removed the code here that previously killed ALL audio if the video audio stream failed!
         }
     }
 #elif RETRO_USING_SDL1
