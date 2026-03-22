@@ -495,10 +495,102 @@ void RetroEngine::Init()
 #endif
 }
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+static unsigned long long em_targetFreq = 0;
+static unsigned long long em_prevTicks  = 0;
+static int em_lastFPS                   = 0;
+
+void RetroEngine_EmFrame()
+{
+    if (!Engine.running) {
+        emscripten_cancel_main_loop();
+
+        ReleaseAudioDevice();
+        StopVideoPlayback();
+        ReleaseRenderDevice();
+#if !RETRO_USE_ORIGINAL_CODE
+        ReleaseInputDevices();
+#if RETRO_USE_NETWORKING
+        DisconnectNetwork(true);
+#endif
+        WriteSettings();
+#if RETRO_USE_MOD_LOADER
+        SaveMods();
+#endif
+#endif
+#if RETRO_USING_SDL1 || RETRO_USING_SDL2
+        SDL_Quit();
+#endif
+        return;
+    }
+
+    unsigned long long curTicks = SDL_GetPerformanceCounter();
+    if (curTicks < em_prevTicks + em_targetFreq)
+        return; // Not time yet — just skip this frame
+    em_prevTicks = curTicks;
+
+    Engine.deltaTime = 1.0 / 60;
+
+    Engine.running = processEvents();
+
+    if (em_lastFPS != Engine.refreshRate) {
+        em_targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
+        em_lastFPS    = Engine.refreshRate;
+    }
+
+    if (!(Engine.focusState & 1) || vsPlaying) {
+        for (int s = 0; s < Engine.gameSpeed; ++s) {
+            ProcessInput();
+
+            if (!Engine.masterPaused || Engine.frameStep) {
+                ProcessNativeObjects();
+            }
+        }
+
+        if (!Engine.masterPaused || Engine.frameStep) {
+            FlipScreen();
+
+#if RETRO_USING_OPENGL && RETRO_USING_SDL2
+            SDL_GL_SwapWindow(Engine.window);
+#endif
+            Engine.frameStep = false;
+        }
+
+#if RETRO_REV00
+        Engine.message = MESSAGE_NONE;
+#endif
+
+#if RETRO_USE_HAPTICS
+        int hapticID = GetHapticEffectNum();
+        if (hapticID >= 0) {
+            // playHaptics(hapticID);
+        }
+        else if (hapticID == HAPTIC_STOP) {
+            // stopHaptics();
+        }
+#endif
+    }
+}
+#endif // __EMSCRIPTEN__
+
+
 void RetroEngine::Run()
 {
     Engine.deltaTime = 0.0f;
 
+#ifdef __EMSCRIPTEN__
+    em_targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
+    em_prevTicks  = SDL_GetPerformanceCounter();
+    em_lastFPS    = Engine.refreshRate;
+
+    printf("=== Starting emscripten_set_main_loop ===\n");
+    fflush(stdout);
+
+    // 0 = use requestAnimationFrame for timing, 1 = simulate infinite loop
+    emscripten_set_main_loop(RetroEngine_EmFrame, 0, 1);
+#else
     unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
     unsigned long long curTicks   = 0;
     unsigned long long prevTicks  = 0;
@@ -522,21 +614,6 @@ void RetroEngine::Run()
 			lastFPS = Engine.refreshRate;
 		}
 		
-        // Focus Checks
-		/*
-        if (!(disableFocusPause & 2)) {
-            if (!Engine.hasFocus) {
-                if (!(Engine.focusState & 1))
-                    Engine.focusState = PauseSound() ? 3 : 1;
-            }
-            else if (Engine.focusState) {
-                if ((Engine.focusState & 2))
-                    ResumeSound();
-                Engine.focusState = 0;
-            }
-        }
-		*/
-
         if (!(Engine.focusState & 1) || vsPlaying) {
 #if !RETRO_USE_ORIGINAL_CODE
             for (int s = 0; s < gameSpeed; ++s) {
@@ -637,8 +714,8 @@ void RetroEngine::Run()
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_Quit();
 #endif
+#endif // __EMSCRIPTEN__ else
 }
-
 #if RETRO_USE_MOD_LOADER
 const tinyxml2::XMLElement *firstXMLChildElement(tinyxml2::XMLDocument *doc, const tinyxml2::XMLElement *elementPtr, const char *name)
 {
