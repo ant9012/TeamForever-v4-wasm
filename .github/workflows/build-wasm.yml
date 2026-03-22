@@ -74,7 +74,7 @@ jobs:
 
       - name: Check for Worker File
         run: |
-          if [ -f "bin/Emscripten/rsdkv4.worker.js" ]; then
+          if [ -f "bin/Emscripten/RSDKv4.worker.js" ]; then
             echo "SUCCESS: Worker file generated."
           else
             echo "ERROR: Worker file MISSING. Check linker flags."
@@ -84,9 +84,9 @@ jobs:
       - name: Prepare Artifacts
         run: |
           mkdir output
-          cp bin/Emscripten/rsdkv4.js output/
-          cp bin/Emscripten/rsdkv4.wasm output/
-          cp bin/Emscripten/rsdkv4.worker.js output/
+          cp bin/Emscripten/RSDKv4.js output/
+          cp bin/Emscripten/RSDKv4.wasm output/
+          cp bin/Emscripten/RSDKv4.worker.js output/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
