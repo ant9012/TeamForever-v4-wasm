@@ -115,6 +115,29 @@ The multiplayer server requires Python 3.8 or later. You can download Python [he
 To use the server, open Command Prompt in the folder [Server.py](https://github.com/Rubberduckycooly/Sonic-1-2-2013-Decompilation/blob/main/Server/Server.py) is located in, then run the command `py -3 Server.py [local IPv4 address] [port] debug`. You can find your local IPv4 address using the command `ipconfig`.
 Note that the CPP server found in the Server folder in the repo has been deprecated and no longer works. It has been kept in the repo for reference purposes.
 
+# Getting this to work on custom interfaces
+To get this web port to work, you need to change your CORS policy on how you serve the port itself, that being your own interface. This is required as libtheora/theoraplay requires multiple threads to work, this is an issue as modern browsers **WILL BLOCK MULTI-THREADING BY DEFAULT.** If you dont the port will not launch, so don't open an issue saying that the port wont open, as most likely you forgot to set the required http response headers: 
+```http
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+You might be asking, "HOW TF AM I SUPPOSED TO DO THIS???????"
+If so here are some simple solutions:
+
+## Setting these in whatever interface you're using to launch the port
+Since you're using a custom interface, it is still **STUPID** easy to setup.
+
+All *you* need to do is to get this: https://raw.githubusercontent.com/gzuidhof/coi-serviceworker/refs/heads/master/coi-serviceworker.js (right-click the link and click on Save As... ), and drop it in the root directory where you are launching the port, and set this where your ```<head>``` of the .html file you're using to launch the port itself (aka where you're launching the RSDKv4.js/.wasm files):
+
+```html
+<head>
+    <script src="coi-serviceworker.js"></script>
+    <!-- Your other meta tags and scripts go here -->
+</head>
+```
+and after that, you're good to go!
+
+
 # FAQ
 ### Q: The screen is tearing, how do I fix it?
 A: Try turning on VSync in settings.ini.
