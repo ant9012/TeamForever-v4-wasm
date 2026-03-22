@@ -203,9 +203,8 @@ bool WriteSaveRAMData()
         return false;
     fWrite(saveRAM, sizeof(int), SAVEDATA_SIZE, saveFile);
     fClose(saveFile);
-    return true;
-
 	EMSCRIPTEN_SYNC_FS();
+    return true;
 }
 
 void InitUserdata()
@@ -932,6 +931,7 @@ void WriteUserdata()
     if (Engine.onlineActive) {
         // Load from online
     }
+	EMSCRIPTEN_SYNC_FS();
 }
 #endif
 
