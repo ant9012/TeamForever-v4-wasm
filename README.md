@@ -92,6 +92,10 @@ emmake make PLATFORM=Emscripten
 ```
 and you should see RSDKv4.js and RSDKv4.wasm, and RSDKv4.worker.js in that folder, and that should be it!
 
+### Actually playing the WASM port itself
+
+**Really** straightforward, just grab the files for [Sonic 1 Forever](https://github.com/ElspethThePict/S1Forever) or [Sonic 2 Absolute](https://github.com/ElspethThePict/S2Absolute) and upload them through your custom interface or via the [RSDK-Library Manager](https://github.com/RSDK-Library/rsdk-library.github.io), along with your mobile Data.rsdk.
+
 
 ## Unofficial Branches
 Follow the installation instructions in the readme of each branch.
