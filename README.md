@@ -76,7 +76,9 @@ If you want to transfer your save(s) from the official mobile version(s), the **
 
 ## Emscripten
 > This does **not** run standalone, so use the [RSDK-Library Manager](https://github.com/RSDK-Library/rsdk-library.github.io) or make your own interface.
+
 > If you just wish to play this port head here instead: https://ant9012.github.io/rsdk-library-fork/
+
 > Make sure that you install [Emscripten itself before this](https://emscripten.org/docs/getting_started/downloads.html).
 * This is mostly centered around linux, so use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) if on Windows.
 * Install the dependencies for linux, and then make sure to run setup-emscripten in the root folder by running in the terminal:
@@ -88,7 +90,7 @@ chmod +x setup-emscripten.sh
 ```bash
 emmake make PLATFORM=Emscripten
 ```
-and you should see RSDKv4.js and RSDKv4.wasm, and RSDKv4.worker.js in that folder
+and you should see RSDKv4.js and RSDKv4.wasm, and RSDKv4.worker.js in that folder, and that should be it!
 
 
 ## Unofficial Branches
