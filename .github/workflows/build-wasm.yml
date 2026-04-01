@@ -20,23 +20,7 @@ jobs:
         with:
           version: '3.1.53'
 
-      - name: Build LibTheora (Pthreads + Static)
-        # We build this manually to ensure it uses Pthreads, matching the engine.
-        run: |
-          wget https://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.gz
-          tar -xf libtheora-1.1.1.tar.gz
-          mv libtheora-1.1.1 dependencies/libtheora
-
-          cd dependencies/libtheora
-          wget -O config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
-          wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'
-
-          # CFLAGS must include -pthread so it links with the engine correctly
-          export CFLAGS="-s USE_OGG=1 -O3 -pthread"
-          export LDFLAGS="-s USE_OGG=1 -pthread"
-          
-          emconfigure ./configure --disable-asm --disable-examples --disable-spec --disable-shared --enable-static --disable-encode
-          emmake make -j$(nproc)
+     
 
       - name: Fix Dependency Paths
         run: |
@@ -62,24 +46,14 @@ jobs:
       - name: Build Engine
         run: |
           emmake make PLATFORM=Emscripten \
-            LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
+            LDFLAGS="-s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
             -j$(nproc)
-
-      - name: Check for Worker File
-        run: |
-          if [ -f "bin/Emscripten/RSDKv4.worker.js" ]; then
-            echo "SUCCESS: Worker file generated."
-          else
-            echo "ERROR: Worker file MISSING. Check linker flags."
-            exit 1
-          fi
 
       - name: Prepare Artifacts
         run: |
           mkdir output
           cp bin/Emscripten/RSDKv4.js output/
           cp bin/Emscripten/RSDKv4.wasm output/
-          cp bin/Emscripten/RSDKv4.worker.js output/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
