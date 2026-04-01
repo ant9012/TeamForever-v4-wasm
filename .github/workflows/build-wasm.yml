@@ -36,6 +36,13 @@ jobs:
           emconfigure ./configure --disable-asm --disable-examples --disable-spec --disable-shared --enable-static --disable-encode
           emmake make -j$(nproc)
 
+      - name: Verify LibTheora Build
+        run: |
+          echo "=== LibTheora headers ==="
+          ls -la dependencies/libtheora/include/theora/
+          echo "=== LibTheora static libs ==="
+          ls -la dependencies/libtheora/lib/.libs/
+
       - name: Fix Dependency Paths
         run: |
           XML_SRC=$(dirname $(find dependencies -name "tinyxml2.h" | head -n 1))
