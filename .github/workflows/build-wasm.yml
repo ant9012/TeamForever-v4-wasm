@@ -20,33 +20,11 @@ jobs:
         with:
           version: '3.1.53'
 
-      - name: Build LibTheora (Pthreads + Static)
-        # We build this manually to ensure it uses Pthreads, matching the engine.
-        run: |
-          wget https://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.gz
-          tar -xf libtheora-1.1.1.tar.gz
-          mv libtheora-1.1.1 dependencies/libtheora
-
-          cd dependencies/libtheora
-          wget -O config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
-          wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'
-
-          # CFLAGS must include -pthread so it links with the engine correctly
-          export CFLAGS="-s USE_OGG=1 -O3"
-          export LDFLAGS="-s USE_OGG=1"
-          
-          emconfigure ./configure --disable-asm --disable-examples --disable-spec --disable-shared --enable-static --disable-encode
-          emmake make -j$(nproc)
-
       - name: Fix Dependency Paths
         run: |
           XML_SRC=$(dirname $(find dependencies -name "tinyxml2.h" | head -n 1))
           mkdir -p dependencies/all/tinyxml2
           cp -r $XML_SRC/* dependencies/all/tinyxml2/ 2>/dev/null || true
-          
-          THEORA_SRC=$(dirname $(find dependencies -name "theoraplay.h" | head -n 1))
-          mkdir -p dependencies/all/theoraplay
-          cp -r $THEORA_SRC/* dependencies/all/theoraplay/ 2>/dev/null || true
 
       - name: Patch Makefile and Headers
         run: |
@@ -62,7 +40,7 @@ jobs:
       - name: Build Engine
         run: |
           emmake make PLATFORM=Emscripten \
-            LDFLAGS="-s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
+            LDFLAGS="-s FORCE_FILESYSTEM=1 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
             -j$(nproc)
 
       - name: Prepare Artifacts
@@ -70,7 +48,6 @@ jobs:
           mkdir output
           cp bin/Emscripten/RSDKv4.js output/
           cp bin/Emscripten/RSDKv4.wasm output/
-          cp bin/Emscripten/RSDKv4.worker.js output/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
