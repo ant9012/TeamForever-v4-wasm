@@ -68,8 +68,8 @@ endif
 
 # =============================================================================
 
-CFLAGS += `$(PKGCONFIG) --cflags sdl2 ogg vorbis theora vorbisfile theoradec`
-LIBS   += `$(PKGCONFIG) --libs-only-l --libs-only-L sdl2 ogg vorbis theora vorbisfile theoradec`
+CFLAGS += `$(PKGCONFIG) --cflags sdl2 ogg vorbis vorbisfile`
+LIBS   += `$(PKGCONFIG) --libs-only-l --libs-only-L sdl2 ogg vorbis vorbisfile`
 
 #CFLAGS += -Wno-strict-aliasing -Wno-narrowing -Wno-write-strings
 
@@ -82,8 +82,7 @@ INCLUDES  += \
     -I./RSDKv4/NativeObjects/ \
     -I./dependencies/all/asio/asio/include/ \
     -I./dependencies/all/stb-image/ \
-    -I./dependencies/all/tinyxml2/ \
-    -I./dependencies/all/theoraplay/
+    -I./dependencies/all/tinyxml2/
 
 INCLUDES += $(LIBS)
 
@@ -115,7 +114,6 @@ SOURCES = \
     RSDKv4/main         \
     RSDKv4/fcaseopen    \
     RSDKv4/NativeObjects/All                \
-    dependencies/all/theoraplay/theoraplay  \
     dependencies/all/tinyxml2/tinyxml2
 	
 ifneq ($(FORCE_CASE_INSENSITIVE),)
