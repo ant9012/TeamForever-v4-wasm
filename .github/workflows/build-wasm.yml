@@ -62,17 +62,8 @@ jobs:
       - name: Build Engine
         run: |
           emmake make PLATFORM=Emscripten \
-            LDFLAGS="-pthread -lidbfs.js -s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
+            LDFLAGS="-s FORCE_FILESYSTEM=1 -s PTHREAD_POOL_SIZE=4 -s INITIAL_MEMORY=268435456 -s ALLOW_MEMORY_GROWTH=1 -s EMULATE_FUNCTION_POINTER_CASTS=1 -s EXPORTED_RUNTIME_METHODS=FS,callMain,cwrap,ccall,IDBFS -s EXPORTED_FUNCTIONS=_main,_RSDK_Initialize,_RSDK_Configure -s INVOKE_RUN=0 -s EXPORT_NAME=Module -s MODULARIZE=0" \
             -j$(nproc)
-
-      - name: Check for Worker File
-        run: |
-          if [ -f "bin/Emscripten/RSDKv4.worker.js" ]; then
-            echo "SUCCESS: Worker file generated."
-          else
-            echo "ERROR: Worker file MISSING. Check linker flags."
-            exit 1
-          fi
 
       - name: Prepare Artifacts
         run: |
